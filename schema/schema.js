@@ -1,20 +1,16 @@
 const graphql = require('graphql');
-const _ = require('lodash');
+const User = require('../models/user');
+const Application = require('../models/application');
+const Status = require('../models/status');
+const JobPosting = require('../models/job-posting');
 
-const { GraphQLSchema, GraphQLObjectType, GraphQLString, GraphQLBoolean, GraphQLID, GraphQLList } = graphql;
-
-var applications = [
-    { id: '1', date: '28/09/2018', jobTitle: 'Full Stack Developer', company: 'Google', url: 'https://www.google.com', statusId: '1', userId: '2', public: false, comments: '' },
-    { id: '2', date: '29/09/2018', jobTitle: 'Full Stack Engineer', company: 'Google', url: 'https://www.google.com', statusId: '1', userId: '2', public: true, comments: '' },
-    { id: '3', date: '30/09/2018', jobTitle: 'Software Engineer', company: 'Google', url: 'https://www.google.com', statusId: '1', userId: '1', public: false, comments: '' },
-    { id: '4', date: '01/09/2018', jobTitle: 'Associate', company: 'Google', url: 'https://www.google.com', statusId: '1', userId: '2', public: true, comments: '' },
-    { id: '5', date: '02/09/2018', jobTitle: 'Intern', company: 'Google', url: 'https://www.google.com', statusId: '1', userId: '1', public: false, comments: '' },
-]
-
-var users = [
-    { id: '1', firstName: 'Nischal', lastName: 'Kumar' },
-    { id: '2', firstName: 'Sumith', lastName: 'Kumar' }
-]
+const {
+    GraphQLSchema,
+    GraphQLObjectType,
+    GraphQLString,
+    GraphQLID,
+    GraphQLList,
+    GraphQLNonNull } = graphql;
 
 const ApplicationType = new GraphQLObjectType({
     name: 'Application',
@@ -26,7 +22,6 @@ const ApplicationType = new GraphQLObjectType({
         url: { type: GraphQLString },
         statusId: { type: GraphQLString },
         userId: { type: GraphQLString },
-        public: { type: GraphQLBoolean },
         comments: { type: GraphQLString }
     })
 });
@@ -35,12 +30,13 @@ const UserType = new GraphQLObjectType({
     name: 'User',
     fields: () => ({
         id: { type: GraphQLID },
+        externalId: { type: GraphQLString },
         firstName: { type: GraphQLString },
         lastName: { type: GraphQLString },
         applications: {
             type: new GraphQLList(ApplicationType),
             resolve(parent, args) {
-                return _.filter(applications, { userId: parent.id });
+                return Application.find({ userId: parent.userId });
             }
         }
     })
@@ -50,7 +46,19 @@ const StatusType = new GraphQLObjectType({
     name: 'ApplicationStatus',
     fields: () => ({
         id: { type: GraphQLID },
+        statusId: { type: GraphQLString },
         status: { type: GraphQLString }
+    })
+});
+
+const JobPostingType = new GraphQLObjectType({
+    name: 'JobPosting',
+    fields: () => ({
+        postingDate: { type: GraphQLString },
+        jobTitle: { type: GraphQLString },
+        company: { type: GraphQLString },
+        url: { type: GraphQLString }
+
     })
 });
 
@@ -61,28 +69,114 @@ const RootQuery = new GraphQLObjectType({
             type: ApplicationType,
             args: { id: { type: GraphQLID } },
             resolve(parent, args) {
-                return _.find(applications, { id: args.id });
+                return Application.findById(args.id);
             }
         },
         user: {
             type: UserType,
             args: { id: { type: GraphQLID } },
             resolve(parent, args) {
-                return _.find(users, { id: args.id });
+                return User.findById(args.id);
             }
         },
-        // This query should fetch from a separate collection which contains only job title, company and url of the job and not private applications
-        publicApplications: {
+        applications: {
             type: new GraphQLList(ApplicationType),
+            args: { userId: { type: GraphQLID } },
+            resolve(parent, args) {
+                return Application.find({
+                    userId: args.userId
+                });
+            }
+        },
+        jobPostings: {
+            type: new GraphQLList(JobPostingType),
             args: {},
             resolve(parent, args) {
-                //return publicApplications
-                return _.filter(applications, { public: true });
+                return JobPosting.find({});
             }
         }
     }
 });
 
+const Mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        addApplication: {
+            type: ApplicationType,
+            args: {
+                date: { type: new GraphQLNonNull(GraphQLString) },
+                jobTitle: { type: new GraphQLNonNull(GraphQLString) },
+                company: { type: new GraphQLNonNull(GraphQLString) },
+                url: { type: new GraphQLNonNull(GraphQLString) },
+                statusId: { type: GraphQLString },
+                userId: { type: GraphQLString },
+                comments: { type: GraphQLString }
+            },
+            resolve(parent, args) {
+                let application = new Application({
+                    date: args.date,
+                    jobTitle: args.jobTitle,
+                    company: args.company,
+                    url: args.url,
+                    status: args.status,
+                    userId: args.userId,
+                    comments: args.comments
+                });
+                return application.save();
+            }
+        },
+        addUser: {
+            type: UserType,
+            args: {
+                externalId: { type: new GraphQLNonNull(GraphQLString) },
+                firstName: { type: new GraphQLNonNull(GraphQLString) },
+                lastName: { type: new GraphQLNonNull(GraphQLString) }
+            },
+            resolve(parent, args) {
+                let user = new User({
+                    externalId: args.externalId,
+                    firstName: args.firstName,
+                    lastName: args.lastName
+                });
+                return user.save();
+            }
+        },
+        addStatus: {
+            type: StatusType,
+            args: {
+                statusId: { type: new GraphQLNonNull(GraphQLString) },
+                status: { type: new GraphQLNonNull(GraphQLString) }
+            },
+            resolve(parent, args) {
+                let status = new Status({
+                    statusId: args.statusId,
+                    status: args.status
+                });
+                return status.save();
+            }
+        },
+        addJobPosting: {
+            type: JobPostingType,
+            args: {
+                postingDate: { type: new GraphQLNonNull(GraphQLString) },
+                jobTitle: { type: new GraphQLNonNull(GraphQLString) },
+                company: { type: new GraphQLNonNull(GraphQLString) },
+                url: { type: new GraphQLNonNull(GraphQLString) }
+            },
+            resolve(parent, args) {
+                let jobPosting = new JobPosting({
+                    postingDate: args.postingDate,
+                    jobTitle: args.postingDate,
+                    company: args.company,
+                    url: args.url
+                })
+                return jobPosting.save();
+            }
+        }
+    }
+})
+
 module.exports = new GraphQLSchema({
-    query: RootQuery
+    query: RootQuery,
+    mutation: Mutation
 });
