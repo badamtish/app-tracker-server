@@ -6,7 +6,7 @@ const applicationSchema = new Schema({
     jobTitle: String,
     company: String,
     url: String,
-    statusId: String,
+    status: Number,
     userId: String,
     comments: String
 });

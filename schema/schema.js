@@ -1,8 +1,8 @@
 const graphql = require('graphql');
 const User = require('../models/user');
 const Application = require('../models/application');
-const Status = require('../models/status');
 const JobPosting = require('../models/job-posting');
+const ApplicationStateType = require('../enums/ApplicationStateEnum');
 
 const {
     GraphQLSchema,
@@ -20,7 +20,7 @@ const ApplicationType = new GraphQLObjectType({
         jobTitle: { type: GraphQLString },
         company: { type: GraphQLString },
         url: { type: GraphQLString },
-        statusId: { type: GraphQLString },
+        status: { type: ApplicationStateType },
         userId: { type: GraphQLString },
         comments: { type: GraphQLString }
     })
@@ -42,14 +42,14 @@ const UserType = new GraphQLObjectType({
     })
 });
 
-const StatusType = new GraphQLObjectType({
+/* const StatusType = new GraphQLObjectType({
     name: 'ApplicationStatus',
     fields: () => ({
         id: { type: GraphQLID },
         statusId: { type: GraphQLString },
         status: { type: GraphQLString }
     })
-});
+});*/
 
 const JobPostingType = new GraphQLObjectType({
     name: 'JobPosting',
@@ -85,6 +85,8 @@ const RootQuery = new GraphQLObjectType({
             resolve(parent, args) {
                 return Application.find({
                     userId: args.userId
+                }).sort({
+                    date: 'descending'
                 });
             }
         },
@@ -107,9 +109,9 @@ const Mutation = new GraphQLObjectType({
                 date: { type: new GraphQLNonNull(GraphQLString) },
                 jobTitle: { type: new GraphQLNonNull(GraphQLString) },
                 company: { type: new GraphQLNonNull(GraphQLString) },
-                url: { type: new GraphQLNonNull(GraphQLString) },
-                statusId: { type: GraphQLString },
-                userId: { type: GraphQLString },
+                url: { type: GraphQLString },
+                status: { type: new GraphQLNonNull(ApplicationStateType) },
+                userId: { type: new GraphQLNonNull(GraphQLString) },
                 comments: { type: GraphQLString }
             },
             resolve(parent, args) {
@@ -141,7 +143,7 @@ const Mutation = new GraphQLObjectType({
                 return user.save();
             }
         },
-        addStatus: {
+        /* addStatus: {
             type: StatusType,
             args: {
                 statusId: { type: new GraphQLNonNull(GraphQLString) },
@@ -154,7 +156,7 @@ const Mutation = new GraphQLObjectType({
                 });
                 return status.save();
             }
-        },
+        },*/
         addJobPosting: {
             type: JobPostingType,
             args: {
