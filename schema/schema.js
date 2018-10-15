@@ -3,6 +3,7 @@ const User = require('../models/user');
 const Application = require('../models/application');
 const JobPosting = require('../models/job-posting');
 const ApplicationStateType = require('../enums/ApplicationStateEnum');
+const types = require('../types/types');
 
 const {
     GraphQLSchema,
@@ -10,78 +11,42 @@ const {
     GraphQLString,
     GraphQLID,
     GraphQLList,
-    GraphQLNonNull } = graphql;
-
-const ApplicationType = new GraphQLObjectType({
-    name: 'Application',
-    fields: () => ({
-        id: { type: GraphQLID },
-        date: { type: GraphQLString },
-        jobTitle: { type: GraphQLString },
-        company: { type: GraphQLString },
-        url: { type: GraphQLString },
-        status: { type: ApplicationStateType },
-        userId: { type: GraphQLString },
-        comments: { type: GraphQLString }
-    })
-});
-
-const UserType = new GraphQLObjectType({
-    name: 'User',
-    fields: () => ({
-        id: { type: GraphQLID },
-        externalId: { type: GraphQLString },
-        firstName: { type: GraphQLString },
-        lastName: { type: GraphQLString },
-        applications: {
-            type: new GraphQLList(ApplicationType),
-            resolve(parent, args) {
-                return Application.find({ userId: parent.userId });
-            }
-        }
-    })
-});
-
-/* const StatusType = new GraphQLObjectType({
-    name: 'ApplicationStatus',
-    fields: () => ({
-        id: { type: GraphQLID },
-        statusId: { type: GraphQLString },
-        status: { type: GraphQLString }
-    })
-});*/
-
-const JobPostingType = new GraphQLObjectType({
-    name: 'JobPosting',
-    fields: () => ({
-        postingDate: { type: GraphQLString },
-        jobTitle: { type: GraphQLString },
-        company: { type: GraphQLString },
-        url: { type: GraphQLString }
-
-    })
-});
+    GraphQLNonNull,
+} = graphql;
+const GraphQLDate = require('graphql-date')
 
 const RootQuery = new GraphQLObjectType({
     name: 'RootQuery',
     fields: {
         application: {
-            type: ApplicationType,
-            args: { id: { type: GraphQLID } },
+            type: types.Application,
+            args: {
+                id: {
+                    type: GraphQLID
+                }
+            },
             resolve(parent, args) {
                 return Application.findById(args.id);
             }
         },
         user: {
-            type: UserType,
-            args: { id: { type: GraphQLID } },
+            type: types.User,
+            args: {
+                id: {
+                    type: GraphQLID
+                }
+            },
             resolve(parent, args) {
                 return User.findById(args.id);
             }
         },
         applications: {
-            type: new GraphQLList(ApplicationType),
-            args: { userId: { type: GraphQLID } },
+            type: new GraphQLList(types.Application),
+            args: {
+                userId: {
+                    type: GraphQLID
+                }
+            },
             resolve(parent, args) {
                 return Application.find({
                     userId: args.userId
@@ -91,7 +56,7 @@ const RootQuery = new GraphQLObjectType({
             }
         },
         jobPostings: {
-            type: new GraphQLList(JobPostingType),
+            type: new GraphQLList(types.JobPosting),
             args: {},
             resolve(parent, args) {
                 return JobPosting.find({});
@@ -104,9 +69,9 @@ const Mutation = new GraphQLObjectType({
     name: 'Mutation',
     fields: {
         addApplication: {
-            type: ApplicationType,
+            type: types.Application,
             args: {
-                date: { type: new GraphQLNonNull(GraphQLString) },
+                date: { type: new GraphQLNonNull(GraphQLDate) },
                 jobTitle: { type: new GraphQLNonNull(GraphQLString) },
                 company: { type: new GraphQLNonNull(GraphQLString) },
                 url: { type: GraphQLString },
@@ -128,7 +93,7 @@ const Mutation = new GraphQLObjectType({
             }
         },
         addUser: {
-            type: UserType,
+            type: types.User,
             args: {
                 externalId: { type: new GraphQLNonNull(GraphQLString) },
                 firstName: { type: new GraphQLNonNull(GraphQLString) },
@@ -143,24 +108,10 @@ const Mutation = new GraphQLObjectType({
                 return user.save();
             }
         },
-        /* addStatus: {
-            type: StatusType,
-            args: {
-                statusId: { type: new GraphQLNonNull(GraphQLString) },
-                status: { type: new GraphQLNonNull(GraphQLString) }
-            },
-            resolve(parent, args) {
-                let status = new Status({
-                    statusId: args.statusId,
-                    status: args.status
-                });
-                return status.save();
-            }
-        },*/
         addJobPosting: {
-            type: JobPostingType,
+            type: types.JobPosting,
             args: {
-                postingDate: { type: new GraphQLNonNull(GraphQLString) },
+                postingDate: { type: new GraphQLNonNull(GraphQLDate) },
                 jobTitle: { type: new GraphQLNonNull(GraphQLString) },
                 company: { type: new GraphQLNonNull(GraphQLString) },
                 url: { type: new GraphQLNonNull(GraphQLString) }
